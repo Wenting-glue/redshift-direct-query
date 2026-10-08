@@ -466,8 +466,11 @@ public abstract class JdbcSplitQueryBuilder
             }
 
             root = (SqlSelect) sqlNode;
+            LOGGER.debug("converted to sqlNode");
 
             RelDataType tableSchema = SubstraitSqlUtils.getTableSchemaFromSubstraitPlan(base64EncodedPlan, sqlDialect);
+            LOGGER.debug("got tableSchema");
+
             SubstraitAccumulatorVisitor visitor = new SubstraitAccumulatorVisitor(accumulator, tableSchema);
             SqlNode parameterizedNode = visitor.visit(root);
 

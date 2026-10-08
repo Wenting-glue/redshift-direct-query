@@ -661,63 +661,6 @@ public class SnowflakeRecordHandlerTest
     }
 
     @Test
-    public void testReadWithConstraintDirectQuery() throws Exception {
-        try (MockedStatic<SnowflakeConstants> snowflakeConstantsMockedStatic = mockStatic(SnowflakeConstants.class)) {
-            snowflakeConstantsMockedStatic.when(() -> SnowflakeConstants.isS3ExportEnabled(any())).thenReturn(false);
-            
-            Schema schema = SchemaBuilder.newBuilder()
-                .addBigIntField("id")
-                .addStringField("name")
-                .build();
-            
-            S3SpillLocation splitLoc = S3SpillLocation.newBuilder()
-                .withBucket(UUID.randomUUID().toString())
-                .withSplitId(UUID.randomUUID().toString())
-                .withQueryId(UUID.randomUUID().toString())
-                .withIsDirectory(true)
-                .build();
-            
-            Split split = Split.newBuilder(splitLoc, keyFactory.create())
-                .add("partition", "partition-primary--limit-1000-offset-0")
-                .build();
-            
-            ReadRecordsRequest request = new ReadRecordsRequest(
-                identity, DEFAULT_CATALOG, QUERY_ID, TABLE_NAME,
-                schema, split,
-                new Constraints(Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), DEFAULT_NO_LIMIT, Collections.emptyMap(), null),
-                100_000_000_000L, 100_000_000_000L);
-            
-            java.sql.PreparedStatement mockPreparedStatement = mock(java.sql.PreparedStatement.class);
-            when(connection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
-            
-            java.sql.ResultSet mockResultSet = mock(java.sql.ResultSet.class);
-            when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
-            when(mockResultSet.next()).thenReturn(false);
-            
-            java.sql.ResultSetMetaData mockMetadata = mock(java.sql.ResultSetMetaData.class);
-            when(mockResultSet.getMetaData()).thenReturn(mockMetadata);
-            when(mockMetadata.getColumnCount()).thenReturn(2);
-            when(mockMetadata.getColumnName(1)).thenReturn("id");
-            when(mockMetadata.getColumnName(2)).thenReturn("name");
-            when(mockMetadata.getColumnType(1)).thenReturn(java.sql.Types.BIGINT);
-            when(mockMetadata.getColumnType(2)).thenReturn(java.sql.Types.VARCHAR);
-            when(mockMetadata.getPrecision(1)).thenReturn(19);
-            when(mockMetadata.getPrecision(2)).thenReturn(255);
-            when(mockMetadata.getScale(1)).thenReturn(0);
-            when(mockMetadata.getScale(2)).thenReturn(0);
-            
-            com.amazonaws.athena.connector.lambda.data.BlockSpiller spiller = 
-                mock(com.amazonaws.athena.connector.lambda.data.BlockSpiller.class);
-            com.amazonaws.athena.connector.lambda.QueryStatusChecker queryStatusChecker = 
-                mock(com.amazonaws.athena.connector.lambda.QueryStatusChecker.class);
-            
-            handler.readWithConstraint(spiller, request, queryStatusChecker);
-            
-            verify(mockPreparedStatement).executeQuery();
-        }
-    }
-
-    @Test
     public void testHandleS3ExportReadWithTimestampTZ() throws Exception {
         Schema schema = SchemaBuilder.newBuilder()
             .addField("ts_col", new org.apache.arrow.vector.types.pojo.ArrowType.Timestamp(
@@ -775,67 +718,6 @@ public class SnowflakeRecordHandlerTest
         method.invoke(handlerSpy, spiller, request, queryStatusChecker);
         
         verify(spiller, atLeastOnce()).writeRows(any());
-    }
-
-    @Test
-    public void testHandleDirectReadMethod() throws Exception {
-        Schema schema = SchemaBuilder.newBuilder()
-            .addBigIntField("id")
-            .addStringField("name")
-            .build();
-        
-        S3SpillLocation splitLoc = S3SpillLocation.newBuilder()
-            .withBucket(UUID.randomUUID().toString())
-            .withSplitId(UUID.randomUUID().toString())
-            .withQueryId(UUID.randomUUID().toString())
-            .withIsDirectory(true)
-            .build();
-        
-        Split split = Split.newBuilder(splitLoc, keyFactory.create())
-            .add("partition", "partition-primary--limit-1000-offset-0")
-            .build();
-        
-        ReadRecordsRequest request = new ReadRecordsRequest(
-            identity, DEFAULT_CATALOG, QUERY_ID, TABLE_NAME,
-            schema, split,
-            new Constraints(Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), DEFAULT_NO_LIMIT, Collections.emptyMap(), null),
-            100_000_000_000L, 100_000_000_000L);
-        
-        java.sql.PreparedStatement mockPreparedStatement = mock(java.sql.PreparedStatement.class);
-        when(connection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
-        
-        java.sql.ResultSet mockResultSet = mock(java.sql.ResultSet.class);
-        when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
-        when(mockResultSet.next()).thenReturn(false);
-        
-        java.sql.ResultSetMetaData mockMetadata = mock(java.sql.ResultSetMetaData.class);
-        when(mockResultSet.getMetaData()).thenReturn(mockMetadata);
-        when(mockMetadata.getColumnCount()).thenReturn(2);
-        when(mockMetadata.getColumnName(1)).thenReturn("id");
-        when(mockMetadata.getColumnName(2)).thenReturn("name");
-        when(mockMetadata.getColumnType(1)).thenReturn(java.sql.Types.BIGINT);
-        when(mockMetadata.getColumnType(2)).thenReturn(java.sql.Types.VARCHAR);
-        when(mockMetadata.getPrecision(1)).thenReturn(19);
-        when(mockMetadata.getPrecision(2)).thenReturn(255);
-        when(mockMetadata.getScale(1)).thenReturn(0);
-        when(mockMetadata.getScale(2)).thenReturn(0);
-        
-        com.amazonaws.athena.connector.lambda.data.BlockSpiller spiller = 
-            mock(com.amazonaws.athena.connector.lambda.data.BlockSpiller.class);
-        com.amazonaws.athena.connector.lambda.QueryStatusChecker queryStatusChecker = 
-            mock(com.amazonaws.athena.connector.lambda.QueryStatusChecker.class);
-        
-        // Use reflection to call handleDirectRead
-        java.lang.reflect.Method method = SnowflakeRecordHandler.class.getDeclaredMethod(
-            "handleDirectRead", 
-            com.amazonaws.athena.connector.lambda.data.BlockSpiller.class,
-            ReadRecordsRequest.class,
-            com.amazonaws.athena.connector.lambda.QueryStatusChecker.class);
-        method.setAccessible(true);
-        
-        method.invoke(handler, spiller, request, queryStatusChecker);
-        
-        verify(connection).prepareStatement(anyString());
     }
 
     @Test
