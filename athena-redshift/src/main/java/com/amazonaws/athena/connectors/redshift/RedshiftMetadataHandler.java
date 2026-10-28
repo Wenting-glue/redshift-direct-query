@@ -19,6 +19,7 @@
  */
 package com.amazonaws.athena.connectors.redshift;
 
+import com.amazonaws.athena.connector.credentials.CredentialsProvider;
 import com.amazonaws.athena.connector.lambda.data.BlockAllocator;
 import com.amazonaws.athena.connector.lambda.domain.TableName;
 import com.amazonaws.athena.connector.lambda.domain.predicate.functions.StandardFunctions;
@@ -43,6 +44,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.arrow.util.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
 import software.amazon.awssdk.services.athena.AthenaClient;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
@@ -91,6 +93,13 @@ public class RedshiftMetadataHandler
     RedshiftMetadataHandler(DatabaseConnectionConfig databaseConnectionConfig, SecretsManagerClient secretsManager, AthenaClient athena, JdbcConnectionFactory jdbcConnectionFactory, java.util.Map<String, String> configOptions)
     {
         super(databaseConnectionConfig, secretsManager, athena, jdbcConnectionFactory, configOptions, new RedshiftJDBCCaseResolver(REDSHIFT_NAME));
+    }
+
+    @Override
+    public CredentialsProvider getCredentialProvider(AwsRequestOverrideConfiguration requestOverrideConfiguration)
+    {
+        return RedshiftCredentialsProvider.create(configOptions, getDatabaseConnectionConfig(), requestOverrideConfiguration,
+                getKmsEncryptionProvider(), secretName -> getSecret(secretName, requestOverrideConfiguration));
     }
 
     @Override

@@ -19,6 +19,7 @@
  */
 package com.amazonaws.athena.connectors.redshift;
 
+import com.amazonaws.athena.connector.credentials.CredentialsProvider;
 import com.amazonaws.athena.connectors.jdbc.connection.DatabaseConnectionConfig;
 import com.amazonaws.athena.connectors.jdbc.connection.DatabaseConnectionInfo;
 import com.amazonaws.athena.connectors.jdbc.connection.GenericJdbcConnectionFactory;
@@ -32,6 +33,7 @@ import com.amazonaws.athena.connectors.postgresql.PostgreSqlFederationExpression
 import org.apache.arrow.util.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
 import software.amazon.awssdk.services.athena.AthenaClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -84,6 +86,13 @@ public class RedshiftRecordHandler
     protected PreparedStatement prepareExportStatement(Connection connection, String query) throws SQLException
     {
         return connection.prepareStatement(query);
+    }
+
+    @Override
+    public CredentialsProvider getCredentialProvider(AwsRequestOverrideConfiguration requestOverrideConfiguration)
+    {
+        return RedshiftCredentialsProvider.create(configOptions, getDatabaseConnectionConfig(), requestOverrideConfiguration,
+                getKmsEncryptionProvider(), secretName -> getSecret(secretName, requestOverrideConfiguration));
     }
 
     @Override
