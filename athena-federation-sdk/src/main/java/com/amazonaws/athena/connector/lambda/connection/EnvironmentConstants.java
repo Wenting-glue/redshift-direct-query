@@ -55,6 +55,10 @@ public final class EnvironmentConstants
 
     public static final String FAS_TOKEN = "fas_token";
     public static final String SERVICE_KMS = "service_kms_key_id";
+    // Glue connection authentication type, e.g. BASIC or IAM
+    public static final String AUTHENTICATION_TYPE = "authentication_type";
+    // Connection role credentials, encrypted like FAS_TOKEN
+    public static final String DB_STS_TOKEN = "db_sts_token";
 
     public static final String CATALOG_CASING_FILTER = "CATALOG_CASING_FILTER";
     public static final String UPPERCASE_ONLY = "UPPERCASE_ONLY";
