@@ -82,7 +82,7 @@ public class RedshiftCredentialsProvider
     {
         if (IAM_AUTHENTICATION_TYPE.equalsIgnoreCase(getOption(configOptions, AUTHENTICATION_TYPE))) {
             AwsCredentials awsCredentials = getAwsCredentials(configOptions, requestOverrideConfiguration, kmsEncryptionProvider);
-            Map<String, String> properties = new HashMap<>(getIdentityProperties(configOptions, databaseConnectionConfig.getJdbcConnectionString()));
+            Map<String, String> properties = new HashMap<>(getIdentityProperties(databaseConnectionConfig.getJdbcConnectionString()));
             properties.put(ACCESS_KEY_ID, awsCredentials.accessKeyId());
             properties.put(SECRET_ACCESS_KEY, awsCredentials.secretAccessKey());
             if (awsCredentials instanceof AwsSessionCredentials) {
@@ -126,15 +126,13 @@ public class RedshiftCredentialsProvider
     }
 
     /**
-     * Maps the IAM identity to a database user: DbUser if configured, otherwise GroupFederation. Adds neither if the
-     * JDBC URL already sets one.
+     * Logs the caller in as their own IAM identity with GroupFederation, unless the JDBC URL already sets DbUser or
+     * GroupFederation. The connection's DbUser option is ignored: it would make the driver call
+     * redshift:GetClusterCredentials and impersonate a named database user, which IAM authentication does not allow
+     * (neither the FAS policy nor Lake Formation vends it). This matches the connector-SDK path.
      */
-    private static Map<String, String> getIdentityProperties(Map<String, String> configOptions, String jdbcConnectionString)
+    private static Map<String, String> getIdentityProperties(String jdbcConnectionString)
     {
-        String dbUser = getOption(configOptions, DB_USER);
-        if (StringUtils.isNotBlank(dbUser)) {
-            return Map.of(DB_USER, dbUser);
-        }
         String url = StringUtils.defaultString(jdbcConnectionString).toLowerCase(Locale.ROOT);
         if (url.contains(DB_USER.toLowerCase(Locale.ROOT) + "=") || url.contains(GROUP_FEDERATION.toLowerCase(Locale.ROOT) + "=")) {
             return Map.of();

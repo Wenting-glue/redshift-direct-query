@@ -129,14 +129,28 @@ public class RedshiftCredentialsProviderTest
     }
 
     @Test
-    public void iamUsesConfiguredDbUser()
+    public void iamIgnoresConfiguredDbUser()
     {
+        // A configured DbUser would make the driver impersonate it with GetClusterCredentials, which is never granted
         configOptions.put("DbUser", "analyst");
+        configOptions.put("DB_USER", "analyst");
 
         Map<String, String> properties = create(overrideWith(FAS));
 
-        assertEquals("analyst", properties.get("DbUser"));
+        assertEquals("true", properties.get("GroupFederation"));
+        assertFalse(properties.containsKey("DbUser"));
+    }
+
+    @Test
+    public void iamKeepsDbUserSetInJdbcUrl()
+    {
+        DatabaseConnectionConfig config = new DatabaseConnectionConfig("default", "redshift", URL + "?DbUser=analyst");
+
+        Map<String, String> properties = RedshiftCredentialsProvider.create(configOptions, config, overrideWith(FAS),
+                kmsEncryptionProvider, secretName -> "unused").getCredentialMap();
+
         assertFalse(properties.containsKey("GroupFederation"));
+        assertFalse(properties.containsKey("DbUser"));
     }
 
     @Test
