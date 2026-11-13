@@ -37,6 +37,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import static com.amazonaws.athena.connectors.postgresql.PostGreSqlConstants.POSTGRES_QUOTE_CHARACTER;
@@ -71,6 +72,18 @@ public class RedshiftRecordHandler
     RedshiftRecordHandler(DatabaseConnectionConfig databaseConnectionConfig, S3Client amazonS3, SecretsManagerClient secretsManager, AthenaClient athena, JdbcConnectionFactory jdbcConnectionFactory, JdbcSplitQueryBuilder jdbcSplitQueryBuilder, java.util.Map<String, String> configOptions)
     {
         super(databaseConnectionConfig, amazonS3, secretsManager, athena, jdbcConnectionFactory, jdbcSplitQueryBuilder, configOptions);
+    }
+
+    /**
+     * Keep Redshift's default export behaviour: the Amazon Redshift JDBC driver uses a ring buffer to bound memory and
+     * stream results, so it needs no fetch size. RedshiftRecordHandler extends PostGreSqlRecordHandler, which sets a
+     * fetch size on the export statement; setting an explicit fetch size here would disable the ring buffer and
+     * measurably regress Redshift exports (~35% slower in testing), so override it back to no fetch size.
+     */
+    @Override
+    protected PreparedStatement prepareExportStatement(Connection connection, String query) throws SQLException
+    {
+        return connection.prepareStatement(query);
     }
 
     @Override
